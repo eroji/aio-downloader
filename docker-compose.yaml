@@ -1,0 +1,125 @@
+version: '3.5'
+services:
+  jackett:
+    container_name: jackett
+    environment:
+      # Shared UID/GID for process so you won't run into permission issues
+      - PUID=
+      - PGID=
+      - TZ=America/Los_Angeles
+    image: linuxserver/jackett
+    restart: always
+    volumes:
+      - './config/jackett:/config/Jackett'
+      - 'downloads:/downloads'
+  proxy:
+    container_name: proxy
+    image: 'nginx:alpine'
+    links:
+      - jackett
+      - radarr
+      - sabnzbd
+      - sickchill
+      - transmission
+    ports:
+      - '80:80'
+      - '443:443'
+    restart: always
+    volumes:
+      - './config/proxy/conf.d/default.conf:/etc/nginx/conf.d/default.conf'
+      - './config/proxy/tls:/etc/nginx/tls'
+  radarr:
+    container_name: radarr
+    environment:
+      # Shared UID/GID for process so you won't run into permission issues
+      - PUID=
+      - PGID=
+      - TZ=America/Los_Angeles
+    image: linuxserver/radarr
+    restart: always
+    volumes:
+      - './config/radarr:/config'
+      - 'downloads/downloads'
+      - 'share:/share'
+  sabnzbd:
+    container_name: sabnzbd
+    environment:
+      # Shared UID/GID for process so you won't run into permission issues
+      - PUID=
+      - PGID=
+      - TZ=America/Los_Angeles
+    image: linuxserver/sabnzbd
+    restart: always
+    volumes:
+      - './config/sabnzbd:/config'
+      - 'downloads:/downloads'
+      - 'share:/share'
+  sickchill:
+    container_name: sickchill
+    environment:
+      # Shared UID/GID for process so you won't run into permission issues
+      - PUID=
+      - PGID=
+      - TZ=America/Los_Angeles
+    image: linuxserver/sickchill
+    restart: always
+    volumes:
+      - './config/sickchill:/config'
+      - 'downloads:/downloads'
+      - 'share:/share'
+  transmission:
+    cap_add:
+      - NET_ADMIN
+    container_name: transmission
+    devices:
+      - /dev/net/tun
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    environment:
+      # Shared UID/GID for process so you won't run into permission issues
+      - PUID=
+      - PGID=
+      # PIA is one of the only VPN providers that support port-forwarding
+      - OPENVPN_PROVIDER=PIA
+      - OPENVPN_USERNAME=
+      - OPENVPN_PASSWORD=
+      # PIA port-forwarding also relies on location you're connecting to
+      - OPENVPN_CONFIG="CA Vancouver"
+      - ENABLE_UFW=true
+      - UFW_ALLOW_GW_NET=true
+      - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
+      # Set your local network subnet, 172.20.0.0/16 for Docker network layer
+      - 'LOCAL_NETWORK=x.x.x.x/24,172.20.0.0/16'
+      # Some sane defaults
+      - TRANSMISSION_SPEED_LIMIT_UP_ENABLED=true
+      - TRANSMISSION_SPEED_LIMIT_UP=30
+      - TRANSMISSION_BLOCKLIST_ENABLED=true
+      - 'TRANSMISSION_BLOCKLIST_URL=http://john.bitsurge.net/public/biglist.p2p.gz'
+      - TRANSMISSION_DOWNLOAD_DIR=/downloads
+      - TRANSMISSION_ENCRYPTION=0
+      - TRANSMISSION_LPD_ENABLED=true
+      - TRANSMISSION_IDLE_SEEDING_LIMIT=1
+      - TRANSMISSION_IDLE_SEEDING_LIMIT_ENABLED=true
+      - TRANSMISSION_INCOMPLETE_DIR_ENABLED=false
+      - TRANSMISSION_PEER_LIMIT_GLOBAL=250
+      - TRANSMISSION_PEER_LIMIT_PER_TORRENT=50
+      - TRANSMISSION_RATIO_LIMIT=0.0010
+      - TRANSMISSION_RATIO_LIMIT_ENABLED=true
+      - TRANSMISSION_DOWNLOAD_QUEUE_SIZE=20
+      - TRANSMISSION_PEER_PORT_RANDOM_HIGH=65535
+      - TRANSMISSION_PEER_PORT_RANDOM_LOW=49152
+      - TRANSMISSION_PEER_PORT_RANDOM_ON_START=true
+      - TRANSMISSION_PORT_FORWARDING_ENABLED=true
+      - TRANSMISSION_UMASK=7
+    image: haugene/transmission-openvpn
+    restart: always
+    volumes:
+      - '/etc/localtime:/etc/localtime:ro'
+      - './config/transmission:/data/transmission-home'
+      - 'downloads:/downloads'
+      - 'share:/share'
+volumes:
+  # Configure your volumes here
+  share:
+  downloads:
